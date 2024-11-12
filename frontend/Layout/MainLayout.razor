@@ -1,0 +1,46 @@
+﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@using frontend.Services
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILoginService LoginService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Used Phones Web Shop</PageTitle>
+
+<div class="page">
+    <!-- Sivupalkki, joka sisältää navigointivalikon -->
+    <div class="sidebar">
+        <NavMenu /> <!-- Sisältää Register- ja Login-linkit -->
+    </div>
+
+    <!-- Pääsisältöalue -->
+    <main>
+        <!-- Ylätason linkki (esimerkiksi "About") -->
+        <div class="top-row px-4">
+            <AuthorizeView>
+                <Authorized>
+                    <span>@(AuthenticationStateProvider.GetAuthenticationStateAsync().Result.User.Identity.Name)</span>
+                    <button class="btn btn-link" @onclick="Logout">Logout</button>
+                </Authorized>
+                <NotAuthorized>
+                    <NavLink href="/login">Login</NavLink>
+                </NotAuthorized>
+            </AuthorizeView>
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+        </div>
+
+        <!-- Näyttää sisällön, joka määritetään kunkin sivun @Body:llä -->
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private async Task Logout()
+    {
+        await LoginService.Logout();
+        ((CustomAuthenticationStateProvider)AuthenticationStateProvider).NotifyUserLogout();
+        NavigationManager.NavigateTo("/");
+    }
+}

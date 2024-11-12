@@ -1,0 +1,105 @@
+@page "/admin/users"
+@using Shared.Models
+@using Microsoft.AspNetCore.Authorization
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+@attribute [Authorize(Roles = "Admin")]
+
+<h3>Käyttäjien Hallinta</h3>
+
+@if (isLoading)
+{
+    <p>Ladataan käyttäjiä...</p>
+}
+else if (users == null || !users.Any())
+{
+    <p>Käyttäjiä ei löytynyt.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Sähköposti</th>
+                    <th>Etunimi</th>
+                    <th>Sukunimi</th>
+                    <th>Rooli</th>
+                    <th>Toiminnot</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in users)
+                {
+                    <tr>
+                        <td>@user.Email</td>
+                        <td>@user.FirstName</td>
+                        <td>@user.LastName</td>
+                        <td>@user.Role</td>
+                        <td>
+                            @if (user.Role != "Admin")
+                            {
+                                <button class="btn btn-sm btn-primary" @onclick="() => PromoteToAdmin(user.UserID)">Edistä Adminiksi</button>
+                            }
+                            else
+                            {
+                                <span class="text-success">Admin</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private List<UserModel> users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            users = await Http.GetFromJsonAsync<List<UserModel>>("/api/users");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Virhe käyttäjien lataamisessa: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task PromoteToAdmin(int userId)
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Haluatko todella edistää tämän käyttäjän Admin-rooliin?");
+        if (!confirmed) return;
+
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"/api/auth/promote/{userId}", new { });
+            if (response.IsSuccessStatusCode)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Käyttäjä edistetty Admin-rooliin.");
+                await LoadUsers();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                await JSRuntime.InvokeVoidAsync("alert", $"Virhe käyttäjän edistämisessä: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Virhe käyttäjän edistämisessä: {ex.Message}");
+        }
+    }
+}
