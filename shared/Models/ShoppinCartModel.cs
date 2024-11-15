@@ -1,8 +1,21 @@
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace Shared.Models
 {
     public class ShoppingCartModel
     {
-        public int CartID { get; set; } // PK - Primary Key, ostoskorin yksilöllinen tunniste
-        public int UserID { get; set; } // FK - Foreign Key, viittaa käyttäjään (UserID) Users-taulussa, yksi käyttäjä = yksi ostoskori
+        [Key]
+        public int CartID { get; set; } // Primary Key
+
+        [Required]
+        public int UserID { get; set; } // Foreign Key to User
+
+        // Navigation Properties
+        [ForeignKey("UserID")]
+        public virtual UserModel User { get; set; }
+
+        public virtual ICollection<CartItemModel> CartItems { get; set; }
     }
 }

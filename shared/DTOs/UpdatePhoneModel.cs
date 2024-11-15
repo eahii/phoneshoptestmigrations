@@ -1,6 +1,3 @@
-// DTO-luokka, joka mahdollistaa osittaiset päivitykset
-// Tämä luokka mahdollistaa vain tiettyjen kenttien päivittämisen puhelimen tiedoissa.
-// Esimerkiksi, jos käyttäjä haluaa päivittää vain puhelimen hinnan, hän voi tehdä sen ilman, että muut tiedot muuttuvat.
 namespace Shared.DTOs
 {
     public class UpdatePhoneModel

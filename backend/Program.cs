@@ -11,11 +11,11 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register your DbContext with the dependency injection container
+// Register your DbContext with the dependency injection container using the connection string from appsettings.json
 builder.Services.AddDbContext<MyDbContext>(options =>
-    options.UseSqlite("Data Source=UsedPhonesShop.db"));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Swagger-dokumentaatio
+// Swagger Documentation
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -43,18 +43,18 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// CORS-käytäntö
+// CORS Policy
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazorClient", policy =>
     {
-        policy.WithOrigins("http://localhost:5058") // Salli pyynnöt Blazor-frontendistä
+        policy.WithOrigins("http://localhost:5058") // Allow requests from Blazor frontend
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
 });
 
-// Lisää Newtonsoft.Json tuki
+// Add Controllers with Newtonsoft.Json support
 builder.Services.AddControllers()
     .AddNewtonsoftJson(options =>
     {
@@ -88,30 +88,30 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-// Käytä CORS-käytäntöä ennen API-reittien rekisteröintiä
+// Use CORS Policy
 app.UseCors("AllowBlazorClient");
 
-// Käytä Authentication ja Authorization
+// Use Authentication and Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Swagger-käyttöliittymä
+// Swagger UI
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Used Phones API V1");
-    c.RoutePrefix = string.Empty; // Swagger UI avautuu suoraan root-URL:ssa
+    c.RoutePrefix = string.Empty; // Swagger UI opens at the root URL
 });
 
-// Tietokannan alustaminen asynkronisesti
+// Initialize Database
 await DatabaseInitializer.Initialize();
 
-// Rekisteröi API-päätepisteet
+// Map API Endpoints
 app.MapPhonesApi();
 app.MapAuthApi();
 app.MapCartApi();
 app.MapOfferApi();
 app.MapUserApi();
 
-// Käynnistetään sovellus
+// Run the Application
 app.Run();
