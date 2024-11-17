@@ -1,3 +1,5 @@
+// File: Shared/Models/OrderModel.cs
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -21,12 +23,14 @@ namespace Shared.Models
         public decimal TotalPrice { get; set; }
 
         [Required]
+        [MaxLength(50)]
         public string Status { get; set; } // e.g., "Pending", "Completed", "Cancelled"
 
         // Navigation Properties
+
         [ForeignKey("UserID")]
         public virtual UserModel User { get; set; }
 
-        public virtual ICollection<OrderItemModel> OrderItems { get; set; }
+        public virtual ICollection<OrderItemModel> OrderItems { get; set; } = new List<OrderItemModel>();
     }
 }

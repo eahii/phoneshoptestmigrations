@@ -6,14 +6,14 @@
 
 <h3>Puhelimet</h3>
 
-<!-- Lisää uusi puhelin -nappi -->
+<!-- Add New Phone Button -->
 <div class="mb-3">
     <button class="btn btn-success" @onclick="ShowAddDialog">
         <span class="oi oi-plus"></span> Lisää uusi puhelin
     </button>
 </div>
 
-<!-- Hakusuodattimet -->
+<!-- Search Filters -->
 <div class="filters mb-4">
     <div class="row">
         <div class="col-md-3">
@@ -74,7 +74,7 @@ else
     </div>
 }
 
-<!-- Lisää uusi puhelin -dialogi -->
+<!-- Add New Phone Dialog -->
 @if (newPhone != null)
 {
     <div class="modal" tabindex="-1" style="display: block; background-color: rgba(0,0,0,0.5);">
@@ -95,7 +95,7 @@ else
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Hinta</label>
-                        <input type="number" class="form-control" @bind="newPhone.Price" />
+                        <input type="number" class="form-control" @bind="newPhone.Price" min="0" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Kuvaus</label>
@@ -103,16 +103,11 @@ else
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Kunto</label>
-                        <select class="form-select" @bind="newPhone.Condition">
-                            <option value="Uusi">Uusi</option>
-                            <option value="Erinomainen">Erinomainen</option>
-                            <option value="Hyvä">Hyvä</option>
-                            <option value="Tyydyttävä">Tyydyttävä</option>
-                        </select>
+                        <input type="text" class="form-control" @bind="newPhone.Condition" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Varastossa</label>
-                        <input type="number" class="form-control" @bind="newPhone.StockQuantity" />
+                        <input type="number" class="form-control" @bind="newPhone.StockQuantity" min="0" />
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -124,7 +119,7 @@ else
     </div>
 }
 
-<!-- Muokkausdialogi -->
+<!-- Edit Phone Dialog -->
 @if (editingPhone != null)
 {
     <div class="modal" tabindex="-1" style="display: block; background-color: rgba(0,0,0,0.5);">
@@ -145,7 +140,7 @@ else
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Hinta</label>
-                        <input type="number" class="form-control" @bind="editingPhone.Price" />
+                        <input type="number" class="form-control" @bind="editingPhone.Price" min="0" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Kuvaus</label>
@@ -162,7 +157,7 @@ else
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Varastossa</label>
-                        <input type="number" class="form-control" @bind="editingPhone.StockQuantity" />
+                        <input type="number" class="form-control" @bind="editingPhone.StockQuantity" min="0" />
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -232,15 +227,7 @@ else
 
     private void ShowAddDialog()
     {
-        newPhone = new PhoneModel
-            {
-                Brand = "",
-                Model = "",
-                Price = 0,
-                Description = "",
-                Condition = "Hyvä",
-                StockQuantity = 1
-            };
+        newPhone = new PhoneModel();
     }
 
     private void CloseAddDialog()
@@ -250,8 +237,6 @@ else
 
     private async Task AddPhone()
     {
-        if (newPhone == null) return;
-
         try
         {
             var response = await Http.PostAsJsonAsync("/api/phones", newPhone);

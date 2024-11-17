@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Data.Sqlite;
 using Shared.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Backend.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api
 {
@@ -16,34 +17,28 @@ namespace Backend.Api
                .RequireAuthorization("Admin"); // Only Admins can access
         }
 
-        private static async Task<IResult> GetAllUsers(HttpContext context)
+        private static async Task<IResult> GetAllUsers(MyDbContext dbContext)
         {
-            var users = new List<UserModel>();
-
-            using (var connection = new SqliteConnection("Data Source=UsedPhonesShop.db"))
+            try
             {
-                await connection.OpenAsync();
+                var users = await dbContext.Users
+                                           .Select(u => new
+                                           {
+                                               u.UserID,
+                                               u.Email,
+                                               u.FirstName,
+                                               u.LastName,
+                                               u.Role
+                                           })
+                                           .ToListAsync();
 
-                var command = connection.CreateCommand();
-                command.CommandText = "SELECT UserID, Email, FirstName, LastName, Role FROM Users";
-
-                using (var reader = await command.ExecuteReaderAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        users.Add(new UserModel
-                        {
-                            UserID = reader.GetInt32(0),
-                            Email = reader.GetString(1),
-                            FirstName = reader.GetString(2),
-                            LastName = reader.GetString(3),
-                            Role = reader.GetString(4)
-                        });
-                    }
-                }
+                return Results.Ok(users);
             }
-
-            return Results.Ok(users);
+            catch (Exception ex)
+            {
+                // Implement proper logging here
+                return Results.Problem("An error occurred while fetching users.");
+            }
         }
     }
 }

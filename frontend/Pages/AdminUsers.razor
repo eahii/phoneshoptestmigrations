@@ -39,7 +39,8 @@ else
                         <td>
                             @if (user.Role != "Admin")
                             {
-                                <button class="btn btn-sm btn-primary" @onclick="() => PromoteToAdmin(user.UserID)">Edistä Adminiksi</button>
+                                <button class="btn btn-sm btn-primary" @onclick="() => PromoteToAdmin(user.UserID)">Edistä
+                                    Adminiksi</button>
                             }
                             else
                             {
@@ -66,6 +67,7 @@ else
     {
         try
         {
+            isLoading = true;
             users = await Http.GetFromJsonAsync<List<UserModel>>("/api/users");
         }
         catch (Exception ex)
@@ -80,15 +82,12 @@ else
 
     private async Task PromoteToAdmin(int userId)
     {
-        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Haluatko todella edistää tämän käyttäjän Admin-rooliin?");
-        if (!confirmed) return;
-
         try
         {
-            var response = await Http.PutAsJsonAsync($"/api/auth/promote/{userId}", new { });
+            var response = await Http.PostAsync($"/api/users/promote/{userId}", null);
             if (response.IsSuccessStatusCode)
             {
-                await JSRuntime.InvokeVoidAsync("alert", "Käyttäjä edistetty Admin-rooliin.");
+                await JSRuntime.InvokeVoidAsync("alert", "Käyttäjä edistettiin Adminiksi onnistuneesti!");
                 await LoadUsers();
             }
             else

@@ -1,3 +1,5 @@
+// File: Shared/Models/OrderItemModel.cs
+
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -23,6 +25,7 @@ namespace Shared.Models
         public decimal Price { get; set; } // Price at the time of order
 
         // Navigation Properties
+
         [ForeignKey("OrderID")]
         public virtual OrderModel Order { get; set; }
 

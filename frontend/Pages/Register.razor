@@ -1,62 +1,63 @@
 @page "/register"
 @inject HttpClient Http
-@using Shared.Models
+@using Shared.DTOs
 @using System.Net.Http.Json
+@using System.ComponentModel.DataAnnotations
 
 <h3>Rekisteröidy</h3>
 
 <div>
     <label>Sähköposti:</label>
-    <input @bind="User.Email" />
+    <input @bind="RegisterModel.Email" class="form-control" />
 </div>
 <div>
     <label>Salasana:</label>
-    <input type="password" @bind="User.Password" />
+    <input type="password" @bind="RegisterModel.Password" class="form-control" />
 </div>
 <div>
     <label>Etunimi:</label>
-    <input @bind="User.FirstName" />
+    <input @bind="RegisterModel.FirstName" class="form-control" />
 </div>
 <div>
     <label>Sukunimi:</label>
-    <input @bind="User.LastName" />
+    <input @bind="RegisterModel.LastName" class="form-control" />
 </div>
 <div>
     <label>Osoite:</label>
-    <input @bind="User.Address" />
+    <input @bind="RegisterModel.Address" class="form-control" />
 </div>
 <div>
     <label>Puhelinnumero:</label>
-    <input @bind="User.PhoneNumber" />
+    <input @bind="RegisterModel.PhoneNumber" class="form-control" />
 </div>
-<div>
-    <button @onclick="RegisterUser">Rekisteröidy</button>
+<div class="mt-3">
+    <button class="btn btn-primary" @onclick="RegisterUser">Rekisteröidy</button>
 </div>
 
 @if (!string.IsNullOrEmpty(Message))
 {
-    <p>@Message</p> <!-- Näyttää viestin onnistuneesta tai epäonnistuneesta rekisteröinnistä -->
+    <p class="mt-3">@Message</p> <!-- Displays success or failure message -->
 }
 
 @code {
-    // Käyttäjän tiedot UserModel-oliolla
-    private UserModel User { get; set; } = new UserModel();
-    private string Message { get; set; } = string.Empty; // Viesti rekisteröinnin tuloksesta
+    // User details with RegisterModel object
+    private RegisterModel RegisterModel { get; set; } = new RegisterModel();
+    private string Message { get; set; } = string.Empty; // Message about registration result
 
-    // Metodi, joka lähettää rekisteröintitiedot backendille
+    // Method to send registration
     private async Task RegisterUser()
     {
         try
         {
-            // Lähetetään käyttäjän tiedot rekisteröintipäätepisteelle
-            var response = await Http.PostAsJsonAsync("/api/auth/register", User);
+            // Send user details to the registration endpoint
+            var response = await Http.PostAsJsonAsync("/api/auth/register", RegisterModel);
             if (response.IsSuccessStatusCode)
             {
-                Message = "Rekisteröinti onnistui!"; // Viesti onnistuneesta rekisteröinnistä
+                Message = "Rekisteröinti onnistui!"; // Success message
             }
             else
             {
-                // Yritetään lukea virhe JSON-muodossa
+                // Try to read error in JSON format
                 try
                 {
                     var errorResponse = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
@@ -71,7 +72,7 @@
                 }
                 catch
                 {
-                    // Jos JSON-lukeminen epäonnistuu, luetaan virhe tekstimuodossa
+                    // If JSON reading fails, read error as text
                     var errorText = await response.Content.ReadAsStringAsync();
                     Message = $"Rekisteröinti epäonnistui: {errorText}";
                 }
@@ -79,7 +80,7 @@
         }
         catch (Exception ex)
         {
-            Message = $"Virhe rekisteröityessä: {ex.Message}"; // Virheviesti, jos pyyntö epäonnistuu
+            Message = $"Virhe rekisteröityessä: {ex.Message}"; // Error message if request fails
         }
     }
 }

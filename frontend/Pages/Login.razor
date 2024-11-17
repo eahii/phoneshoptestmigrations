@@ -8,28 +8,29 @@
 
 <div>
     <label>Sähköposti:</label>
-    <input @bind="Email" />
+    <input @bind="Email" class="form-control" />
 </div>
 <div>
     <label>Salasana:</label>
-    <input type="password" @bind="Password" />
+    <input type="password" @bind="Password" class="form-control" />
 </div>
-<div>
-    <button @onclick="LoginUser">Kirjaudu</button>
+<div class="mt-3">
+    <button class="btn btn-primary" @onclick="HandleLogin">Login</button>
 </div>
 
 @if (!string.IsNullOrEmpty(Message))
 {
-    <p>@Message</p>
+    <p class="mt-3">@Message</p>
 }
 
 @code {
-    private string Email { get; set; } = string.Empty;
-    private string Password { get; set; } = string.Empty;
-    private string Message { get; set; } = string.Empty;
+    private string Email { get; set; }
+    private string Password { get; set; }
+    private string Message { get; set; }
 
-    private async Task LoginUser()
+    private async Task HandleLogin()
     {
+        Message = string.Empty;
         var success = await LoginService.Login(Email, Password);
         if (success)
         {

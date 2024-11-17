@@ -59,17 +59,12 @@ else
             </tfoot>
         </table>
     </div>
-
-    <div class="d-flex justify-content-end mt-3">
-        <button class="btn btn-primary" @onclick="NavigateToCheckout">
-            Siirry kassalle
-        </button>
-    </div>
+    <button class="btn btn-primary" @onclick="NavigateToCheckout">Siirry Kassalle</button>
 }
 
 @code {
     private bool isLoading = true;
-    private List<CartItemWithPhone> cartItems;
+    private List<CartItemModel> cartItems;
 
     protected override async Task OnInitializedAsync()
     {
@@ -81,7 +76,7 @@ else
         try
         {
             isLoading = true;
-            cartItems = await Http.GetFromJsonAsync<List<CartItemWithPhone>>("/api/cart");
+            cartItems = await Http.GetFromJsonAsync<List<CartItemModel>>("/api/cart");
         }
         catch (Exception ex)
         {
@@ -93,10 +88,14 @@ else
         }
     }
 
-    private async Task UpdateQuantity(CartItemWithPhone item, int change)
+    private async Task UpdateQuantity(CartItemModel item, int change)
     {
         var newQuantity = item.Quantity + change;
-        if (newQuantity < 1) return;
+        if (newQuantity < 1)
+        {
+            await RemoveFromCart(item.CartItemID);
+            return;
+        }
 
         try
         {
@@ -134,10 +133,5 @@ else
     private void NavigateToCheckout()
     {
         NavigationManager.NavigateTo("/checkout");
-    }
-
-    private async Task Checkout()
-    {
-        // Tämä metodi voidaan poistaa, jos siirrytään käyttämään navigointia
     }
 }

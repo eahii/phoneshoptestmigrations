@@ -1,41 +1,41 @@
-﻿<!-- Ylätason navigointipalkki -->
+﻿<!-- Top-level navigation menu -->
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <!-- Sivuston nimi ja kotilinkki -->
+        <!-- Site name and home link -->
         <a class="navbar-brand" href="">Used Phones Web Shop</a>
-        <!-- Navigointivalikon avaamiseen/taittamiseen tarkoitettu painike -->
+        <!-- Toggle button for navigation menu -->
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
     </div>
 </div>
 
-<!-- Varsinainen navigointivalikko -->
+<!-- Actual navigation menu -->
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="flex-column">
-        <!-- Koti-linkki, joka vie käyttäjän etusivulle -->
+        <!-- Home link -->
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
             </NavLink>
         </div>
 
-        <!-- Linkki rekisteröitymissivulle -->
+        <!-- Register link -->
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="/register" Match="NavLinkMatch.Prefix">
                 <span class="bi bi-person-plus-fill" aria-hidden="true"></span> Rekisteröidy
             </NavLink>
         </div>
 
-        <!-- Linkki kirjautumissivulle -->
+        <!-- Login link -->
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="/login" Match="NavLinkMatch.Prefix">
                 <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span> Kirjaudu sisään
             </NavLink>
         </div>
 
-        <!-- Linkit käyttäjille ja administratiivisille rooleille -->
-        <AuthorizeView>
+        <!-- Links for authenticated users -->
+        <AuthorizeView Context="authViewContext">
             <Authorized>
                 <!-- Customer and Admin Links -->
                 <div class="nav-item px-3">
@@ -60,28 +60,33 @@
                 </div>
 
                 <!-- Admin Only Links -->
-                <AuthorizeView Roles="Admin">
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="/admin/users">
-                            <span class="bi bi-people-fill" aria-hidden="true"></span> Käyttäjien Hallinta
-                        </NavLink>
-                    </div>
+                <AuthorizeView Roles="Admin" Context="adminViewContext">
+                    <Authorized>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="/admin/users">
+                                <span class="bi bi-people-fill" aria-hidden="true"></span> Käyttäjien Hallinta
+                            </NavLink>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <!-- Content for users who are authenticated but not Admins, if any -->
+                    </NotAuthorized>
                 </AuthorizeView>
             </Authorized>
             <NotAuthorized>
-                <!-- Optional: Links for unauthenticated users -->
+                <NavLink class="nav-link" href="/login">
+                    <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span> Kirjaudu sisään
+                </NavLink>
             </NotAuthorized>
         </AuthorizeView>
     </nav>
 </div>
 
 @code {
-    private bool collapseNavMenu = true; // Määrittää, onko navigointivalikko taitettu
+    private bool collapseNavMenu = true;
 
-    // Palauttaa CSS-luokan valikon tila mukaan
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : "";
 
-    // Taittaa/avaa navigointivalikon
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;

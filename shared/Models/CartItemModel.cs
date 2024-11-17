@@ -1,3 +1,5 @@
+// File: Shared/Models/CartItemModel.cs
+
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -19,6 +21,7 @@ namespace Shared.Models
         public int Quantity { get; set; }
 
         // Navigation Properties
+
         [ForeignKey("CartID")]
         public virtual ShoppingCartModel ShoppingCart { get; set; }
 
@@ -26,6 +29,7 @@ namespace Shared.Models
         public virtual PhoneModel Phone { get; set; }
     }
 
+    // Optional DTO for frontend
     public class CartItemWithPhone
     {
         public int CartItemID { get; set; }

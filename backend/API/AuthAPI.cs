@@ -1,13 +1,20 @@
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Data.Sqlite;
+using Shared.DTOs;
 using Shared.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using System.Threading.Tasks;
+using Backend.Data;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
 
 namespace Backend.Api
 {
@@ -15,133 +22,184 @@ namespace Backend.Api
     {
         public static void MapAuthApi(this WebApplication app)
         {
-            app.MapPost("/api/auth/register", RegisterUser);
-            app.MapPost("/api/auth/login", LoginUser);
-            app.MapPut("/api/auth/promote/{id}", PromoteUser).RequireAuthorization("Admin");
+            app.MapPost("/api/auth/register", RegisterUser)
+               .AllowAnonymous();
+
+            app.MapPost("/api/auth/login", LoginUser)
+               .AllowAnonymous();
+
+            app.MapPut("/api/auth/promote/{id}", PromoteUser)
+               .RequireAuthorization("Admin");
         }
 
-        // Käyttäjän rekisteröinti
-        public static async Task<IResult> RegisterUser(UserModel user)
+        // User Registration
+        public static async Task<IResult> RegisterUser(
+            RegisterModel register,
+            MyDbContext dbContext,
+            ILoggerFactory loggerFactory)
         {
-            using var connection = new SqliteConnection("Data Source=UsedPhonesShop.db");
-            await connection.OpenAsync();
-
-            // Tarkista, onko käyttäjä jo olemassa
-            var checkUserCmd = connection.CreateCommand();
-            checkUserCmd.CommandText = "SELECT COUNT(1) FROM Users WHERE Email = @Email";
-            checkUserCmd.Parameters.AddWithValue("@Email", user.Email);
-
-            var exists = Convert.ToInt32(await checkUserCmd.ExecuteScalarAsync()) > 0;
-            if (exists)
+            var logger = loggerFactory.CreateLogger("AuthAPI.RegisterUser");
+            try
             {
-                return Results.BadRequest(new { Error = "Käyttäjä on jo olemassa." });
+                // Validate the incoming model
+                if (!Validator.TryValidateObject(register, new ValidationContext(register), null, true))
+                {
+                    logger.LogWarning("Registration attempt failed: Invalid registration data.");
+                    return Results.BadRequest(new { Error = "Invalid registration data." });
+                }
+
+                // Check if user already exists
+                var existingUser = await dbContext.Users
+                    .FirstOrDefaultAsync(u => u.Email == register.Email);
+                if (existingUser != null)
+                {
+                    logger.LogWarning("Registration attempt failed: User with email {Email} already exists.", register.Email);
+                    return Results.BadRequest(new { Error = "User already exists." });
+                }
+
+                // Create new UserModel instance
+                var user = new UserModel
+                {
+                    Email = register.Email,
+                    PasswordHash = HashPassword(register.Password),
+                    FirstName = register.FirstName,
+                    LastName = register.LastName,
+                    Role = "Customer",
+                    CreatedDate = DateTime.UtcNow,
+                    Address = register.Address,
+                    PhoneNumber = register.PhoneNumber
+                };
+
+                // Add user to the database
+                dbContext.Users.Add(user);
+                await dbContext.SaveChangesAsync();
+
+                logger.LogInformation("New user registered with email {Email}.", register.Email);
+                return Results.Ok("Registration successful.");
             }
-
-            // Hashaa salasana
-            user.PasswordHash = HashPassword(user.Password);
-
-            // Lisää käyttäjä
-            var insertCmd = connection.CreateCommand();
-            insertCmd.CommandText = @"
-                INSERT INTO Users (Email, PasswordHash, FirstName, LastName, Address, PhoneNumber, Role, CreatedDate)
-                VALUES (@Email, @PasswordHash, @FirstName, @LastName, @Address, @PhoneNumber, 'Customer', CURRENT_TIMESTAMP)";
-            insertCmd.Parameters.AddWithValue("@Email", user.Email);
-            insertCmd.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
-            insertCmd.Parameters.AddWithValue("@FirstName", user.FirstName);
-            insertCmd.Parameters.AddWithValue("@LastName", user.LastName);
-            insertCmd.Parameters.AddWithValue("@Address", user.Address ?? (object)DBNull.Value);
-            insertCmd.Parameters.AddWithValue("@PhoneNumber", user.PhoneNumber ?? (object)DBNull.Value);
-
-            await insertCmd.ExecuteNonQueryAsync();
-
-            return Results.Ok("Rekisteröinti onnistui.");
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error during user registration.");
+                return Results.Problem("An error occurred while processing your request.");
+            }
         }
 
-        // Käyttäjän kirjautuminen
-        public static async Task<IResult> LoginUser(LoginModel login)
+        // User Login
+        public static async Task<IResult> LoginUser(
+            LoginModel login,
+            MyDbContext dbContext,
+            IConfiguration config,
+            ILoggerFactory loggerFactory)
         {
-            using var connection = new SqliteConnection("Data Source=UsedPhonesShop.db");
-            await connection.OpenAsync();
-
-            var cmd = connection.CreateCommand();
-            cmd.CommandText = "SELECT UserID, PasswordHash, FirstName, LastName, Email, Role FROM Users WHERE Email = @Email";
-            cmd.Parameters.AddWithValue("@Email", login.Email);
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            if (!await reader.ReadAsync())
+            var logger = loggerFactory.CreateLogger("AuthAPI.LoginUser");
+            try
             {
-                return Results.Unauthorized();
-            }
+                // Validate the incoming model
+                if (!Validator.TryValidateObject(login, new ValidationContext(login), null, true))
+                {
+                    logger.LogWarning("Login attempt failed: Invalid login data.");
+                    return Results.BadRequest(new { Error = "Invalid login data." });
+                }
 
-            var storedHash = reader.GetString(1);
-            if (!VerifyPassword(login.Password, storedHash))
+                var user = await dbContext.Users
+                    .FirstOrDefaultAsync(u => u.Email == login.Email);
+                if (user == null)
+                {
+                    logger.LogWarning("Login attempt failed: User with email {Email} not found.", login.Email);
+                    return Results.Unauthorized();
+                }
+
+                if (!VerifyPassword(login.Password, user.PasswordHash))
+                {
+                    logger.LogWarning("Login attempt failed: Incorrect password for email {Email}.", login.Email);
+                    return Results.Unauthorized();
+                }
+
+                // Generate JWT Token
+                var token = GenerateJwtToken(user, config);
+
+                logger.LogInformation("User with email {Email} logged in successfully.", login.Email);
+                return Results.Ok(new { Token = token });
+            }
+            catch (Exception ex)
             {
-                return Results.Unauthorized();
+                logger.LogError(ex, "Error during user login.");
+                return Results.Problem("An error occurred while processing your request.");
             }
+        }
 
-            // Generate JWT token
+        // User Promotion
+        public static async Task<IResult> PromoteUser(
+            int id,
+            MyDbContext dbContext,
+            ILoggerFactory loggerFactory)
+        {
+            var logger = loggerFactory.CreateLogger("AuthAPI.PromoteUser");
+            try
+            {
+                var user = await dbContext.Users.FindAsync(id);
+                if (user == null)
+                {
+                    logger.LogWarning("Promotion attempt failed: User with ID {UserID} not found.", id);
+                    return Results.NotFound(new { Error = "User not found." });
+                }
+
+                if (user.Role == "Admin")
+                {
+                    logger.LogInformation("User with ID {UserID} is already an Admin.", id);
+                    return Results.Ok("User is already an Admin.");
+                }
+
+                user.Role = "Admin";
+                await dbContext.SaveChangesAsync();
+
+                logger.LogInformation("User with ID {UserID} has been promoted to Admin.", id);
+                return Results.Ok("User promoted to Admin successfully.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error during user promotion.");
+                return Results.Problem("An error occurred while processing your request.");
+            }
+        }
+
+        // Password Hashing
+        private static string HashPassword(string password)
+        {
+            using var sha256 = SHA256.Create();
+            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+            return Convert.ToBase64String(hashedBytes);
+        }
+
+        // Password Verification
+        private static bool VerifyPassword(string password, string storedHash)
+        {
+            var hashOfInput = HashPassword(password);
+            return hashOfInput == storedHash;
+        }
+
+        // JWT Token Generation
+        private static string GenerateJwtToken(UserModel user, IConfiguration config)
+        {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes("YourSecretKeyHere"); // Ensure this matches the one in Program.cs
+            var key = Encoding.UTF8.GetBytes(config["Jwt:Key"]);
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-                    new Claim(ClaimTypes.NameIdentifier, reader.GetInt32(0).ToString()),
-                    new Claim(ClaimTypes.Email, reader.GetString(4)),
-                    new Claim(ClaimTypes.Role, reader.GetString(5))
+                    new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Role, user.Role) // Ensure Role claim is included
                 }),
                 Expires = DateTime.UtcNow.AddHours(1),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature)
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
-            var jwtToken = tokenHandler.WriteToken(token);
-
-            return Results.Ok(new { Token = jwtToken });
-        }
-
-        // Promotes a user to Admin role
-        private static async Task<IResult> PromoteUser(int id, HttpContext context)
-        {
-            // Ensure the requester has Admin role
-            var user = context.User;
-            if (!user.IsInRole("Admin"))
-            {
-                return Results.Forbid();
-            }
-
-            using var connection = new SqliteConnection("Data Source=UsedPhonesShop.db");
-            await connection.OpenAsync();
-
-            var cmd = connection.CreateCommand();
-            cmd.CommandText = "UPDATE Users SET Role = 'Admin' WHERE UserID = @UserID";
-            cmd.Parameters.AddWithValue("@UserID", id);
-
-            var rowsAffected = await cmd.ExecuteNonQueryAsync();
-            if (rowsAffected > 0)
-            {
-                return Results.Ok("Käyttäjä on edistetty Admin-rooliin.");
-            }
-            else
-            {
-                return Results.NotFound("Käyttäjää ei löytynyt.");
-            }
-        }
-
-        // Hashaa salasanan SHA-256-algoritmilla
-        public static string HashPassword(string password)
-        {
-            using var sha256 = SHA256.Create();
-            var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-            return Convert.ToBase64String(bytes);
-        }
-
-        // Tarkistaa, vastaako salasana tallennettua hashia
-        private static bool VerifyPassword(string password, string storedHash)
-        {
-            var hashOfInput = HashPassword(password);
-            return hashOfInput == storedHash;
+            return tokenHandler.WriteToken(token);
         }
     }
 }

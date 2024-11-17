@@ -13,9 +13,10 @@ namespace Shared.Models
         public int UserID { get; set; } // Foreign Key to User
 
         // Navigation Properties
+
         [ForeignKey("UserID")]
         public virtual UserModel User { get; set; }
 
-        public virtual ICollection<CartItemModel> CartItems { get; set; }
+        public virtual ICollection<CartItemModel> CartItems { get; set; } = new List<CartItemModel>();
     }
 }

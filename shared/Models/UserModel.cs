@@ -1,3 +1,5 @@
+// File: Shared/Models/UserModel.cs
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -12,34 +14,44 @@ namespace Shared.Models
 
         [Required]
         [EmailAddress]
+        [MaxLength(255)]
         public string Email { get; set; }
 
-        [NotMapped]
-        public string Password { get; set; } // For user input (not stored in DB)
+        [Required]
+        [MaxLength(255)]
+        public string PasswordHash { get; set; }
 
         [Required]
-        public string PasswordHash { get; set; } // Hashed password for storage
-
-        [Required]
+        [MaxLength(100)]
         public string FirstName { get; set; }
 
         [Required]
+        [MaxLength(100)]
         public string LastName { get; set; }
 
-        public string? Address { get; set; }
-
-        public string? PhoneNumber { get; set; }
-
         [Required]
-        public string Role { get; set; } = "Customer"; // User role (Customer/Admin)
+        [MaxLength(50)]
+        public string Role { get; set; } = "Customer"; // Default role
 
         [Required]
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
+        [MaxLength(255)]
+        public string Address { get; set; }
+
+        [Phone]
+        [MaxLength(20)]
+        public string PhoneNumber { get; set; }
+
         // Navigation Properties
+
+        // One-to-One: UserModel <-> ShoppingCartModel
         public virtual ShoppingCartModel ShoppingCart { get; set; }
-        public virtual ICollection<CartItemModel> CartItems { get; set; }
-        public virtual ICollection<OfferModel> Offers { get; set; }
-        public virtual ICollection<OrderModel> Orders { get; set; }
+
+        // One-to-Many: UserModel -> OfferModel
+        public virtual ICollection<OfferModel> Offers { get; set; } = new List<OfferModel>();
+
+        // One-to-Many: UserModel -> OrderModel
+        public virtual ICollection<OrderModel> Orders { get; set; } = new List<OrderModel>();
     }
 }
